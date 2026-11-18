@@ -3,8 +3,10 @@ import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { json, jsonParseLinter } from '@codemirror/lang-json'
 import { yaml as yamlLanguage } from '@codemirror/lang-yaml'
 import { xml as xmlLanguage } from '@codemirror/lang-xml'
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { linter, lintGutter, type LintSource } from '@codemirror/lint'
 import { EditorView } from '@codemirror/view'
+import { tags } from '@lezer/highlight'
 import {
   Braces, Check, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown,
   CircleAlert, Clipboard, Code2, Copy, Download, FileJson2, FolderOpen,
@@ -46,11 +48,19 @@ const editorTheme = EditorView.theme({
   '.cm-lintRange-error': { backgroundImage: 'none', borderBottom: '2px wavy #ff777e' },
   '.cm-diagnostic-error': { borderLeftColor: '#ff777e' },
   '.cm-tooltip': { backgroundColor: '#222b3a', border: '1px solid #3c4658', color: '#e8edf5' },
-  '.ͼb': { color: '#b4c7ff' },
-  '.ͼc': { color: '#a7d7b4' },
-  '.ͼd': { color: '#d9b8eb' },
-  '.ͼe': { color: '#e9b48d' },
 }, { dark: true })
+
+const editorHighlight = HighlightStyle.define([
+  { tag: [tags.propertyName, tags.definition(tags.propertyName)], color: '#b4c5ff' },
+  { tag: [tags.string, tags.attributeValue], color: '#a3d9b5' },
+  { tag: tags.number, color: '#e9bd8e' },
+  { tag: [tags.bool, tags.null], color: '#d3b4e9' },
+  { tag: [tags.tagName, tags.typeName], color: '#b4c5ff' },
+  { tag: tags.attributeName, color: '#e9bd8e' },
+  { tag: [tags.lineComment, tags.blockComment], color: '#8291a6', fontStyle: 'italic' },
+  { tag: [tags.separator, tags.punctuation, tags.brace, tags.squareBracket, tags.angleBracket, tags.definitionOperator], color: '#9aa9bd' },
+  { tag: tags.invalid, color: '#ff858c', textDecoration: 'underline' },
+])
 
 type MenuState = { x: number; y: number; path: string; value: JsonValue } | null
 
@@ -113,7 +123,7 @@ export default function App() {
       const error = parseSource(view.state.doc.toString(), format).error
       return error ? [{ from: error.offset, to: Math.min(error.offset + 1, view.state.doc.length), severity: 'error', message: error.message }] : []
     }
-    return [language, linter(diagnosticSource), lintGutter(), editorTheme]
+    return [language, syntaxHighlighting(editorHighlight), linter(diagnosticSource), lintGutter(), editorTheme]
   }, [format])
   const matches = useMemo(() => parsed.error || parsed.empty ? [] : findMatches(parsed.value, query), [parsed, query])
   const matchPaths = useMemo(() => new Set(matches.map(match => match.path)), [matches])
@@ -286,7 +296,7 @@ export default function App() {
     <main className="workspace">
       <section className="pane source-pane">
         <div className="pane-header"><div className="pane-title"><Code2 size={16} /><span>源码编辑器</span></div><div className="pane-meta"><span className="live-dot" />实时解析</div></div>
-        <div className="editor-wrap"><CodeMirror ref={editor} value={source} onChange={setSource} extensions={extensions} basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: true, highlightSelectionMatches: true }} theme="none" placeholder={`在这里粘贴 ${formatLabel[format]}，或拖入文件...`} /></div>
+        <div className="editor-wrap"><CodeMirror ref={editor} value={source} onChange={setSource} extensions={extensions} basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: true, highlightSelectionMatches: true, syntaxHighlighting: false }} theme="none" placeholder={`在这里粘贴 ${formatLabel[format]}，或拖入文件...`} /></div>
         {parsed.error && <button className="error-banner" onClick={showError}><CircleAlert size={17} /><span><strong>解析错误</strong> · 第 {parsed.error.line} 行，第 {parsed.error.column} 列<br /><small>{parsed.error.message}</small></span><ChevronRight size={16} /></button>}
         {!parsed.error && !parsed.empty && <div className="source-status"><Check size={14} />有效的 {formatLabel[format]} <span>·</span> {source.split('\n').length} 行 <span>·</span> {new Blob([source]).size.toLocaleString()} 字节</div>}
       </section>
