@@ -1,0 +1,7 @@
+node_modules/
+dist/
+release/
+build/NextJSON.iconset/
+build/icon.png
+*.tsbuildinfo
+.DS_Store

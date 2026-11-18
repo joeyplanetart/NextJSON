@@ -1,0 +1,49 @@
+{
+  "name": "nextjson",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "desktop:dev": "concurrently -k \"bun run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "pack:mac": "bun run build && electron-builder --mac dir",
+    "dist:mac": "bun run build && electron-builder --mac dmg",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lint": "^6.9.2",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.38.6",
+    "@uiw/react-codemirror": "^4.25.2",
+    "lucide-react": "^0.468.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "concurrently": "^9.2.1",
+    "electron": "^35.7.5",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.1",
+    "wait-on": "^8.0.4"
+  },
+  "build": {
+    "appId": "com.nextjson.desktop",
+    "productName": "NextJSON",
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "electron/**/*", "package.json"],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "target": [{ "target": "dir", "arch": ["arm64"] }]
+    }
+  }
+}
