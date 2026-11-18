@@ -40,13 +40,14 @@ app.whenReady().then(() => {
     { label: '视图', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] },
   ]))
   ipcMain.handle('file:open', async () => {
-    const result = await dialog.showOpenDialog({ properties: ['openFile'], filters: [{ name: 'JSON', extensions: ['json', 'jsonl', 'txt'] }, { name: '所有文件', extensions: ['*'] }] })
+    const result = await dialog.showOpenDialog({ properties: ['openFile'], filters: [{ name: '数据文件', extensions: ['json', 'yaml', 'yml', 'xml', 'txt'] }, { name: '所有文件', extensions: ['*'] }] })
     if (result.canceled || !result.filePaths[0]) return null
     const filePath = result.filePaths[0]
     return { name: path.basename(filePath), content: await fs.readFile(filePath, 'utf8') }
   })
-  ipcMain.handle('file:save', async (_event, { content, name }) => {
-    const result = await dialog.showSaveDialog({ defaultPath: name || 'data.json', filters: [{ name: 'JSON', extensions: ['json'] }] })
+  ipcMain.handle('file:save', async (_event, { content, name, format }) => {
+    const extension = { json: 'json', yaml: 'yaml', xml: 'xml' }[format] || 'json'
+    const result = await dialog.showSaveDialog({ defaultPath: name || `data.${extension}`, filters: [{ name: format?.toUpperCase() || 'JSON', extensions: [extension] }] })
     if (result.canceled || !result.filePath) return false
     await fs.writeFile(result.filePath, content, 'utf8')
     return true

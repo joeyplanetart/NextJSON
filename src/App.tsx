@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { json, jsonParseLinter } from '@codemirror/lang-json'
-import { linter, lintGutter } from '@codemirror/lint'
+import { yaml as yamlLanguage } from '@codemirror/lang-yaml'
+import { xml as xmlLanguage } from '@codemirror/lang-xml'
+import { linter, lintGutter, type LintSource } from '@codemirror/lint'
 import { EditorView } from '@codemirror/view'
 import {
   Braces, Check, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown,
   CircleAlert, Clipboard, Code2, Copy, Download, FileJson2, FolderOpen,
   ListTree, MoreHorizontal, Search, Sparkles, WrapText, X,
 } from 'lucide-react'
-import { childPath, findMatches, kind, parseErrorLocation, preview, valueText, type JsonValue } from './json'
+import { childPath, findMatches, kind, preview, valueText, type JsonValue } from './json'
+import { detectFormat, fileNameForFormat, formatLabel, parseSource, serializeSource, type DataFormat } from './formats'
 
 const demo = `{
   "project": "NextJSON",
@@ -77,9 +80,22 @@ function allExpandablePaths(value: JsonValue, path = '$'): string[] {
   return [path, ...Object.entries(value).flatMap(([key, child]) => allExpandablePaths(child, childPath(path, Array.isArray(value) ? Number(key) : key)))]
 }
 
+function initialExpanded(format: DataFormat, source: string): Set<string> {
+  const paths = new Set(['$'])
+  if (format === 'xml') {
+    const parsed = parseSource(source, format)
+    if (!parsed.error && parsed.value && typeof parsed.value === 'object' && !Array.isArray(parsed.value)) {
+      const rootKey = Object.keys(parsed.value)[0]
+      if (rootKey) paths.add(childPath('$', rootKey))
+    }
+  }
+  return paths
+}
+
 export default function App() {
   const [source, setSource] = useState(demo)
   const [fileName, setFileName] = useState('sample.json')
+  const [format, setFormat] = useState<DataFormat>('json')
   const [query, setQuery] = useState('')
   const [activeMatch, setActiveMatch] = useState(0)
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(['$', '$.settings', '$.features']))
@@ -90,11 +106,15 @@ export default function App() {
   const editor = useRef<ReactCodeMirrorRef>(null)
   const searchInput = useRef<HTMLInputElement>(null)
 
-  const parsed = useMemo(() => {
-    if (!source.trim()) return { value: null as JsonValue, error: null as ReturnType<typeof parseErrorLocation> | null, empty: true }
-    try { return { value: JSON.parse(source) as JsonValue, error: null, empty: false } }
-    catch (error) { return { value: null as JsonValue, error: parseErrorLocation(error, source), empty: false } }
-  }, [source])
+  const parsed = useMemo(() => parseSource(source, format), [source, format])
+  const extensions = useMemo(() => {
+    const language = format === 'json' ? json() : format === 'yaml' ? yamlLanguage() : xmlLanguage()
+    const diagnosticSource: LintSource = format === 'json' ? jsonParseLinter() : view => {
+      const error = parseSource(view.state.doc.toString(), format).error
+      return error ? [{ from: error.offset, to: Math.min(error.offset + 1, view.state.doc.length), severity: 'error', message: error.message }] : []
+    }
+    return [language, linter(diagnosticSource), lintGutter(), editorTheme]
+  }, [format])
   const matches = useMemo(() => parsed.error || parsed.empty ? [] : findMatches(parsed.value, query), [parsed, query])
   const matchPaths = useMemo(() => new Set(matches.map(match => match.path)), [matches])
   const nodeCount = useMemo(() => parsed.error || parsed.empty ? 0 : countNodes(parsed.value), [parsed])
@@ -132,7 +152,8 @@ export default function App() {
   }, [])
 
   const loadContent = useCallback((content: string, name: string) => {
-    setSource(content); setFileName(name); setSelected('$'); setQuery(''); setExpanded(new Set(['$']))
+    const detected = detectFormat(name, content)
+    setSource(content); setFileName(name); setFormat(detected); setSelected('$'); setQuery(''); setExpanded(initialExpanded(detected, content))
     notify(`已打开 ${name}`)
   }, [notify])
 
@@ -142,7 +163,7 @@ export default function App() {
       catch { notify('无法读取文件') }
     } else {
       const input = document.createElement('input')
-      input.type = 'file'; input.accept = '.json,.jsonl,.txt,application/json,text/plain'
+      input.type = 'file'; input.accept = '.json,.yaml,.yml,.xml,.txt,application/json,application/xml,text/plain'
       input.onchange = async () => { const file = input.files?.[0]; if (file) loadContent(await file.text(), file.name) }
       input.click()
     }
@@ -152,11 +173,11 @@ export default function App() {
 
   const saveFile = async () => {
     if (window.nextjson) {
-      try { if (await window.nextjson.saveFile(source, fileName)) notify('文件已保存') }
+      try { if (await window.nextjson.saveFile(source, fileName, format)) notify('文件已保存') }
       catch { notify('无法保存文件') }
     } else {
       const anchor = document.createElement('a')
-      anchor.href = URL.createObjectURL(new Blob([source], { type: 'application/json' }))
+      anchor.href = URL.createObjectURL(new Blob([source], { type: format === 'xml' ? 'application/xml' : format === 'yaml' ? 'application/yaml' : 'application/json' }))
       anchor.download = fileName
       anchor.click()
       URL.revokeObjectURL(anchor.href)
@@ -165,9 +186,22 @@ export default function App() {
   }
 
   const transform = (compact: boolean) => {
-    if (parsed.error || parsed.empty) { notify('请先输入有效的 JSON'); return }
-    setSource(JSON.stringify(parsed.value, null, compact ? undefined : 2))
-    notify(compact ? 'JSON 已压缩' : 'JSON 已美化')
+    if (parsed.error || parsed.empty) { notify(`请先输入有效的 ${formatLabel[format]}`); return }
+    try { setSource(serializeSource(parsed.value, format, compact)); notify(`${formatLabel[format]} 已${compact ? '压缩' : '美化'}`) }
+    catch (error) { notify(error instanceof Error ? error.message : '格式化失败') }
+  }
+
+  const convertTo = (target: DataFormat) => {
+    if (parsed.error || parsed.empty) { notify(`请先输入有效的 ${formatLabel[format]}`); return }
+    try {
+      const converted = serializeSource(parsed.value, target)
+      setSource(converted)
+      setFormat(target)
+      setFileName(current => fileNameForFormat(current, target))
+      setSelected('$')
+      setExpanded(initialExpanded(target, converted))
+      notify(`已转换为 ${formatLabel[target]}`)
+    } catch (error) { notify(error instanceof Error ? error.message : '转换失败') }
   }
 
   const copy = async (text: string, label: string) => {
@@ -231,7 +265,7 @@ export default function App() {
   return <div className="app" onDragOver={event => { event.preventDefault(); setDragging(true) }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false) }} onDrop={onDrop} onClick={() => menu && setMenu(null)}>
     <header className="topbar">
       <div className="brand"><div className="brand-icon"><Braces size={19} strokeWidth={2.3} /></div><span>Next<span className="brand-light">JSON</span></span></div>
-      <div className="topbar-center"><span className="topbar-dot" /> JSON 工作台 <span className="topbar-separator">/</span> <span className="topbar-file">{fileName}</span></div>
+      <div className="topbar-center"><span className="topbar-dot" /> 数据工作台 <span className="topbar-separator">/</span> <span className="topbar-file">{fileName}</span></div>
       <div className="topbar-actions"><span className="shortcut-hint">⌘ O 打开文件</span><button className="icon-button top-more" title="更多选项" onClick={() => notify('使用 ⌘F 搜索，右键节点可复制数据')}><MoreHorizontal size={19} /></button></div>
     </header>
 
@@ -240,8 +274,11 @@ export default function App() {
         <button className="primary-button" onClick={openFile}><FolderOpen size={16} />打开文件</button>
         <button className="toolbar-button" onClick={saveFile}><Download size={16} />保存</button>
         <div className="toolbar-divider" />
-        <button className="toolbar-button" onClick={() => transform(false)} title="美化 JSON"><Sparkles size={16} />美化</button>
-        <button className="toolbar-button" onClick={() => transform(true)} title="压缩 JSON"><WrapText size={16} />压缩</button>
+        <label className="format-picker"><span>格式</span><select aria-label="解析格式" value={format} onChange={event => { const next = event.target.value as DataFormat; setFormat(next); setFileName(current => fileNameForFormat(current, next)); setExpanded(initialExpanded(next, source)) }}><option value="json">JSON</option><option value="yaml">YAML</option><option value="xml">XML</option></select></label>
+        <label className="convert-picker"><select aria-label="转换为" value="" onChange={event => convertTo(event.target.value as DataFormat)}><option value="" disabled>转换为…</option>{(['json', 'yaml', 'xml'] as DataFormat[]).filter(item => item !== format).map(item => <option value={item} key={item}>{formatLabel[item]}</option>)}</select></label>
+        <div className="toolbar-divider" />
+        <button className="toolbar-button" onClick={() => transform(false)} title={`美化 ${formatLabel[format]}`}><Sparkles size={16} />美化</button>
+        <button className="toolbar-button" onClick={() => transform(true)} title={format === 'yaml' ? 'YAML 不支持压缩' : `压缩 ${formatLabel[format]}`} disabled={format === 'yaml'}><WrapText size={16} />压缩</button>
       </div>
       <div className="search-box"><Search size={16} /><input ref={searchInput} value={query} onChange={event => { setQuery(event.target.value); setActiveMatch(0) }} onKeyDown={event => { if (event.key === 'Enter' && matches.length) { event.preventDefault(); setActiveMatch(index => (index + (event.shiftKey ? -1 : 1) + matches.length) % matches.length) } }} placeholder="搜索键或值..." aria-label="搜索键或值" />{query && <><span className="search-count">{matches.length ? `${activeMatch + 1}/${matches.length}` : '0 结果'}</span><button className="search-clear" onClick={() => setQuery('')} title="清除搜索"><X size={14} /></button></>}<kbd>⌘ F</kbd></div>
     </div>
@@ -249,23 +286,23 @@ export default function App() {
     <main className="workspace">
       <section className="pane source-pane">
         <div className="pane-header"><div className="pane-title"><Code2 size={16} /><span>源码编辑器</span></div><div className="pane-meta"><span className="live-dot" />实时解析</div></div>
-        <div className="editor-wrap"><CodeMirror ref={editor} value={source} onChange={setSource} extensions={[json(), linter(jsonParseLinter()), lintGutter(), editorTheme]} basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: true, highlightSelectionMatches: true }} theme="none" placeholder="在这里粘贴 JSON，或拖入文件..." /></div>
+        <div className="editor-wrap"><CodeMirror ref={editor} value={source} onChange={setSource} extensions={extensions} basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: true, highlightSelectionMatches: true }} theme="none" placeholder={`在这里粘贴 ${formatLabel[format]}，或拖入文件...`} /></div>
         {parsed.error && <button className="error-banner" onClick={showError}><CircleAlert size={17} /><span><strong>解析错误</strong> · 第 {parsed.error.line} 行，第 {parsed.error.column} 列<br /><small>{parsed.error.message}</small></span><ChevronRight size={16} /></button>}
-        {!parsed.error && !parsed.empty && <div className="source-status"><Check size={14} />有效的 JSON <span>·</span> {source.split('\n').length} 行 <span>·</span> {new Blob([source]).size.toLocaleString()} 字节</div>}
+        {!parsed.error && !parsed.empty && <div className="source-status"><Check size={14} />有效的 {formatLabel[format]} <span>·</span> {source.split('\n').length} 行 <span>·</span> {new Blob([source]).size.toLocaleString()} 字节</div>}
       </section>
 
       <section className="pane tree-pane">
         <div className="pane-header"><div className="pane-title"><ListTree size={16} /><span>树状视图</span><span className="node-count">{nodeCount} 个节点</span></div><div className="tree-tools"><button title="全部展开" onClick={() => setExpanded(new Set(allExpandablePaths(parsed.value)))} disabled={!!parsed.error || parsed.empty}><ChevronsUpDown size={16} /></button><button title="全部折叠" onClick={() => setExpanded(new Set())} disabled={!!parsed.error || parsed.empty}><ChevronsDownUp size={16} /></button></div></div>
         <div className="tree-scroll">
-          {parsed.error ? <div className="empty-tree"><CircleAlert size={27} /><strong>无法生成树状视图</strong><span>修复左侧的 JSON 语法错误后即可查看</span></div>
-            : parsed.empty ? <div className="empty-tree"><FileJson2 size={28} /><strong>等待 JSON 数据</strong><span>粘贴内容或打开 JSON 文件</span></div>
+          {parsed.error ? <div className="empty-tree"><CircleAlert size={27} /><strong>无法生成树状视图</strong><span>修复左侧的 {formatLabel[format]} 语法错误后即可查看</span></div>
+            : parsed.empty ? <div className="empty-tree"><FileJson2 size={28} /><strong>等待 {formatLabel[format]} 数据</strong><span>粘贴内容或打开文件</span></div>
             : renderNode(parsed.value, '$', 'root', 0)}
         </div>
         <div className="tree-footer"><span><span className="footer-swatch key-swatch" />键</span><span><span className="footer-swatch string-swatch" />字符串</span><span><span className="footer-swatch number-swatch" />数字</span><span><span className="footer-swatch bool-swatch" />布尔值</span></div>
       </section>
     </main>
 
-    <footer className="app-footer"><span><FileJson2 size={14} /> {fileName}</span><span className="footer-tip">右键节点复制 JSONPath 或值 <span>·</span> 拖入文件以打开</span><span className={`footer-valid ${parsed.error ? 'invalid' : ''}`}><span className="status-dot" />{parsed.error ? '语法错误' : parsed.empty ? '等待输入' : 'JSON 有效'}</span></footer>
+    <footer className="app-footer"><span><FileJson2 size={14} /> {fileName}</span><span className="footer-tip">右键节点复制 JSONPath 或值 <span>·</span> 拖入文件以打开</span><span className={`footer-valid ${parsed.error ? 'invalid' : ''}`}><span className="status-dot" />{parsed.error ? '语法错误' : parsed.empty ? '等待输入' : `${formatLabel[format]} 有效`}</span></footer>
 
     {menu && <div className="context-menu" style={{ left: menu.x, top: menu.y }} onClick={event => event.stopPropagation()}><div className="context-heading">{menu.path}</div><button onClick={() => copy(menu.path, 'JSONPath')}><Clipboard size={15} />复制 JSONPath<span>⌘⇧C</span></button><button onClick={() => copy(valueText(menu.value), '节点值')}><Copy size={15} />复制节点值</button></div>}
     {toast && <div className="toast"><Check size={15} />{toast}</div>}
