@@ -1,0 +1,39 @@
+.file-diff-tool{min-height:0;flex:1;display:flex;flex-direction:column;gap:17px;overflow:auto;padding:28px 30px 30px;background:#10151e;color:#dce5f3}
+.file-diff-heading{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.file-diff-heading h1{margin:0;color:#f1f5fd;font-size:25px;letter-spacing:-.7px}
+.file-diff-heading p{margin:8px 0 0;color:#8999ae;font-size:12px;line-height:1.6}
+.file-diff-heading-icon{width:48px;height:48px;flex:none;display:grid;place-items:center;border:1px solid #475576;border-radius:12px;background:#24314a;color:#a9b9ff}
+.diff-input-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;min-height:220px}
+.diff-input-card{min-width:0;display:flex;flex-direction:column;overflow:hidden;border:1px solid #374354;border-radius:11px;background:#1a222f}
+.diff-input-card:focus-within{border-color:#7789cf}
+.diff-input-heading{height:42px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;border-bottom:1px solid #344153;font-size:11px;font-weight:700}
+.diff-input-heading>span:first-child{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.diff-side-indicator{width:7px;height:7px;border-radius:2px;background:#ee9b99}.diff-side-indicator.right{background:#74caa3}
+.diff-file-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8292a8;font-size:10px;font-weight:500}
+.diff-input-card textarea{width:100%;min-height:130px;flex:1;resize:vertical;padding:13px 15px;border:0;outline:0;background:#171e29;color:#e6edf8;font:11px/1.55 "SFMono-Regular",Consolas,monospace;tab-size:2}
+.diff-input-card textarea::placeholder{color:#6c7b91}
+.diff-input-actions{height:43px;flex:none;display:flex;align-items:center;gap:8px;padding:0 12px;border-top:1px solid #344153}
+.diff-input-actions button,.diff-swap,.diff-result-heading button{display:flex;align-items:center;gap:6px;padding:6px 9px;border:1px solid #3e4b61;border-radius:6px;background:#253143;color:#c5d2e6;font-size:10px;font-weight:600;white-space:nowrap}
+.diff-input-actions button:hover,.diff-swap:hover,.diff-result-heading button:hover:not(:disabled){background:#34435b}
+.diff-input-actions small{margin-left:auto;color:#8291a5;font-size:10px;white-space:nowrap}
+.diff-controls{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.diff-mode{display:flex;gap:3px;padding:4px;border:1px solid #343f50;border-radius:9px;background:#1c2533}
+.diff-mode button{padding:7px 12px;border:0;border-radius:6px;background:none;color:#93a2b7;font-size:11px;font-weight:600}
+.diff-mode button.active{background:#3c4d7c;color:#ecf0ff;box-shadow:0 1px 6px #0004}
+.diff-mode-note{margin:-7px 0 0;color:#8495ae;font-size:10px}
+.diff-error{padding:10px 13px;border:1px solid #754650;border-radius:7px;background:#38262d;color:#ffafb2;font-size:11px}
+.diff-result-panel{min-height:280px;flex:1;display:flex;flex-direction:column;overflow:hidden;border:1px solid #354153;border-radius:11px;background:#181f2b}
+.diff-result-heading{height:45px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;border-bottom:1px solid #344153;background:#1d2735}
+.diff-result-title{display:flex;align-items:center;gap:13px;font-size:11px;font-weight:700}.diff-count{color:#9aacbf;font-size:10px;font-weight:500}
+.diff-result-heading button:disabled{opacity:.4}
+.diff-empty{min-height:230px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#8190a6;text-align:center}.diff-empty svg{color:#788fc2}.diff-empty strong{color:#cbd5e5;font-size:12px}.diff-empty span{font-size:10px}
+.diff-result-scroll{min-height:0;flex:1;overflow:auto;font:11px/21px "SFMono-Regular",Consolas,monospace}
+.diff-column-heading,.diff-result-row{min-width:700px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.diff-column-heading{position:sticky;top:0;z-index:2;background:#202b3b;color:#abb9cd;font:600 10px/27px -apple-system,BlinkMacSystemFont,sans-serif}
+.diff-column-heading span{min-width:0;overflow:hidden;padding-left:42px;text-overflow:ellipsis;white-space:nowrap}.diff-column-heading span+span{border-left:1px solid #435166}
+.diff-result-row.focused{outline:1px solid #91a3ff;outline-offset:-1px}
+.diff-cell{min-width:0;display:flex;white-space:pre;min-height:22px}.diff-cell+ .diff-cell{border-left:1px solid #374255}
+.diff-line-number{width:34px;min-width:34px;padding-right:7px;border-right:1px solid #344153;color:#687a91;text-align:right;user-select:none}
+.diff-line-text{min-width:0;overflow:visible;padding:0 8px}.diff-added{background:#1b3a32;color:#a8dfbe}.diff-removed{background:#442c34;color:#f1b2b5}.diff-equal{color:#b9c5d5}
+.diff-inline-change{border-radius:2px;background:#376e52;color:#e0ffeb}.diff-removed .diff-inline-change{background:#8c4652;color:#fff0ef}
+@media(max-width:1250px){.file-diff-tool{padding:22px}.diff-input-grid{min-height:190px}.diff-input-actions{gap:4px}.diff-input-actions button{padding:5px 6px}}
