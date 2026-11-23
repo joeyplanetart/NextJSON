@@ -8,7 +8,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
-    minWidth: 920,
+    minWidth: 1080,
     minHeight: 600,
     title: 'NextJSON',
     backgroundColor: '#10141d',
@@ -50,6 +50,14 @@ app.whenReady().then(() => {
     const result = await dialog.showSaveDialog({ defaultPath: name || `data.${extension}`, filters: [{ name: format?.toUpperCase() || 'JSON', extensions: [extension] }] })
     if (result.canceled || !result.filePath) return false
     await fs.writeFile(result.filePath, content, 'utf8')
+    return true
+  })
+  ipcMain.handle('image:save', async (_event, { bytes, name, format }) => {
+    const extension = { jpeg: 'jpg', png: 'png', webp: 'webp' }[format]
+    if (!extension || !(bytes instanceof Uint8Array) || bytes.byteLength === 0 || bytes.byteLength > 200 * 1024 * 1024) throw new Error('无效的图片数据')
+    const result = await dialog.showSaveDialog({ defaultPath: path.basename(name || `image.${extension}`), filters: [{ name: format.toUpperCase(), extensions: [extension] }] })
+    if (result.canceled || !result.filePath) return false
+    await fs.writeFile(result.filePath, Buffer.from(bytes))
     return true
   })
   ipcMain.on('clipboard:write', (_event, text) => clipboard.writeText(text))

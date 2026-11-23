@@ -8,9 +8,9 @@ import { linter, lintGutter, type LintSource } from '@codemirror/lint'
 import { EditorView } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
 import {
-  Braces, Check, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown,
+  Check, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown,
   CircleAlert, Clipboard, Code2, Copy, Download, FileJson2, FolderOpen,
-  ListTree, MoreHorizontal, Search, Sparkles, WrapText, X,
+  ListTree, Search, Sparkles, WrapText, X,
 } from 'lucide-react'
 import { childPath, findMatches, kind, preview, valueText, type JsonValue } from './json'
 import { detectFormat, fileNameForFormat, formatLabel, parseSource, serializeSource, type DataFormat } from './formats'
@@ -102,7 +102,7 @@ function initialExpanded(format: DataFormat, source: string): Set<string> {
   return paths
 }
 
-export default function App() {
+export default function App({ active }: { active: boolean }) {
   const [source, setSource] = useState(demo)
   const [fileName, setFileName] = useState('sample.json')
   const [format, setFormat] = useState<DataFormat>('json')
@@ -179,7 +179,7 @@ export default function App() {
     }
   }, [loadContent, notify])
 
-  useEffect(() => window.nextjson?.onOpenShortcut(openFile), [openFile])
+  useEffect(() => active ? window.nextjson?.onOpenShortcut(openFile) : undefined, [active, openFile])
 
   const saveFile = async () => {
     if (window.nextjson) {
@@ -272,13 +272,7 @@ export default function App() {
     if (file) loadContent(await file.text(), file.name)
   }
 
-  return <div className="app" onDragOver={event => { event.preventDefault(); setDragging(true) }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false) }} onDrop={onDrop} onClick={() => menu && setMenu(null)}>
-    <header className="topbar">
-      <div className="brand"><div className="brand-icon"><Braces size={19} strokeWidth={2.3} /></div><span>Next<span className="brand-light">JSON</span></span></div>
-      <div className="topbar-center"><span className="topbar-dot" /> 数据工作台 <span className="topbar-separator">/</span> <span className="topbar-file">{fileName}</span></div>
-      <div className="topbar-actions"><span className="shortcut-hint">⌘ O 打开文件</span><button className="icon-button top-more" title="更多选项" onClick={() => notify('使用 ⌘F 搜索，右键节点可复制数据')}><MoreHorizontal size={19} /></button></div>
-    </header>
-
+  return <div className="data-tool" onDragOver={event => { event.preventDefault(); setDragging(true) }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false) }} onDrop={onDrop} onClick={() => menu && setMenu(null)}>
     <div className="toolbar">
       <div className="toolbar-group">
         <button className="primary-button" onClick={openFile}><FolderOpen size={16} />打开文件</button>
@@ -316,6 +310,6 @@ export default function App() {
 
     {menu && <div className="context-menu" style={{ left: menu.x, top: menu.y }} onClick={event => event.stopPropagation()}><div className="context-heading">{menu.path}</div><button onClick={() => copy(menu.path, 'JSONPath')}><Clipboard size={15} />复制 JSONPath<span>⌘⇧C</span></button><button onClick={() => copy(valueText(menu.value), '节点值')}><Copy size={15} />复制节点值</button></div>}
     {toast && <div className="toast"><Check size={15} />{toast}</div>}
-    {dragging && <div className="drop-overlay"><FileJson2 size={38} /><strong>松开以打开 JSON 文件</strong></div>}
+    {dragging && <div className="drop-overlay"><FileJson2 size={38} /><strong>松开以打开数据文件</strong></div>}
   </div>
 }
