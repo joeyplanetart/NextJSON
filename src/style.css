@@ -14,3 +14,4 @@
 
 .image-preview{position:relative;display:block}
 .image-preview img{position:absolute;inset:15px;width:calc(100% - 30px);height:calc(100% - 30px);max-width:none;max-height:none;object-fit:contain;box-shadow:none}
+.sidebar{overflow-y:auto}
