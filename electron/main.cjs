@@ -1,4 +1,4 @@
-const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu } = require('electron')
+const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, shell } = require('electron')
 const fs = require('node:fs/promises')
 const path = require('node:path')
 
@@ -24,6 +24,11 @@ function createWindow() {
 
   if (isDev) win.loadURL('http://localhost:5173')
   else win.loadFile(path.join(__dirname, '../dist/index.html'))
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://')) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
 
   win.webContents.on('before-input-event', (event, input) => {
     if (input.meta && input.key.toLowerCase() === 'o') {
