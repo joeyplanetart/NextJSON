@@ -68,12 +68,12 @@ export default function CompanySitesTool() {
     {groups.length ? groups.map(group => <section key={group.title} className="company-site-group">
       <div className="company-site-group-heading"><div><span className="company-site-group-icon">{group.icon}</span><h2>{group.title}</h2><span>{group.sites.length} 个站点</span></div><small>{group.description}</small></div>
       <div className="company-site-grid">{group.sites.map(site => <article key={site.id} className="company-site-card">
-        <button className="company-site-qr" onClick={() => setExpandedSite(site)} disabled={!qrImages[site.id]} aria-label={`放大查看 ${site.code} 二维码`} title="点击放大二维码">
-          {qrImages[site.id] ? <img src={qrImages[site.id]} alt={`${site.code} 站点二维码`} /> : <span>二维码生成中…</span>}
-        </button>
-        <div className="company-site-details">
-          <div className="company-site-info"><span className="company-site-icon">{site.icon}</span><div><strong>{site.code}</strong><small>ID: {site.id}</small></div></div>
-          <a className="company-site-url" href={site.url} target="_blank" rel="noopener noreferrer" title={site.url}>{site.url.replace(/^https:\/\//, '')}</a>
+        <div className="company-site-info"><span className="company-site-icon">{site.icon}</span><div><strong>{site.code}</strong><small>ID: {site.id}</small></div></div>
+        <a className="company-site-url" href={site.url} target="_blank" rel="noopener noreferrer" title={site.url}>{site.url.replace(/^https:\/\//, '')}</a>
+        <div className="company-site-bottom">
+          <button className="company-site-qr" onClick={() => setExpandedSite(site)} disabled={!qrImages[site.id]} aria-label={`放大查看 ${site.code} 二维码`} title="点击放大二维码">
+            {qrImages[site.id] ? <img src={qrImages[site.id]} alt={`${site.code} 站点二维码`} /> : <span>二维码生成中…</span>}
+          </button>
           <div className="company-site-actions"><button onClick={() => void copyUrl(site)} title="复制链接"><Copy size={14} />复制</button><button onClick={() => void saveQr(site)} disabled={!qrImages[site.id]} title="保存二维码"><Download size={14} />保存</button><a href={site.url} target="_blank" rel="noopener noreferrer" title="打开站点"><ExternalLink size={14} />访问</a></div>
         </div>
       </article>)}</div>
